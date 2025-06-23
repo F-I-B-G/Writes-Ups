@@ -2,7 +2,7 @@
 
 **Sitio:** DockerLabs  
 **Dificultad:** Fácil  
-**Fecha:** 13/06/2025  
+**Fecha:** 19/06/2025  
 **Aprendizaje:**  
 - Reforzar el uso de `ffuf` y ataques de Path Traversal.  
 - Prestar atención a detalles en páginas web para obtener pistas.  
